@@ -88,24 +88,29 @@ void Foam::adjointOutletPressureFvPatchScalarField::updateCoeffs()
         return;
     }
 
-    const fvsPatchField<scalar>& phip =
-        patch().lookupPatchField<surfaceScalarField, scalar>("phi");
+   // const fvsPatchField<scalar>& phip =
+      //  patch().lookupPatchField<surfaceScalarField, scalar>("phi");
 
-    const fvsPatchField<scalar>& phiap =
-        patch().lookupPatchField<surfaceScalarField, scalar>("phia");
-
- scalarField Up_n = phip/patch().magSf();
-     scalarField Uap_n = phiap/patch().magSf();
-
-    const fvPatchField<vector>& Up =
+   // const fvsPatchField<scalar>& phiap =
+       // patch().lookupPatchField<surfaceScalarField, scalar>("phia");
+  const fvPatchField<vector>& Up =
         patch().lookupPatchField<volVectorField, vector>("U");
 
-    const fvPatchField<vector>& Uap =
+const fvPatchField<vector>& Uap =
         patch().lookupPatchField<volVectorField, vector>("Ua");
 
+ scalarField Up_n = Up & patch().nf();
+     scalarField Uap_n = Uap & patch().nf();
+
+  
+   // const fvPatchField<scalar>& Uap =
+       // patch().lookupPatchField<volScalarField, scalar>("Ua");
+
    // operator==((phiap/patch().magSf() - 1.0)*phip/patch().magSf() + (Up & Uap));
- const incompressible::turbulenceModel & turb = db().lookupObject<incompressible::turbulenceModel>("turbulenceProperties");
-scalarField nueff = turb.nuEff()().boundaryField()[patch().index()];
+const incompressible::RASModel& rasModel =
+        db().lookupObject<incompressible::RASModel>("turbulenceProperties");
+   
+scalarField nueff = rasModel.nuEff()().boundaryField()[patch().index()];
 
 const scalarField & deltainv = patch().deltaCoeffs();
 
@@ -114,11 +119,13 @@ const scalarField & deltainv = patch().deltaCoeffs();
 
     scalarField Uaneigh_n = Uap.patchInternalField() & patch().nf();
     const fvPatchField<vector> & Udp =
-        patch().lookupPatchField<volVectorField, vector>("Ua");
+        patch().lookupPatchField<volVectorField, vector>("Ud");
+scalarField Udp_n = (Udp & patch().nf());
 
-scalarField::operator= ( (Uap & Up) + (Up_n*Uap_n)
-    + nueff*deltainv*(Uap_n - Uaneigh_n)
-    - 0.5*mag(Up)*mag(Up)   - (Up & patch().Sf()/patch().magSf())*(Up & patch().Sf()/patch().magSf()));
+
+operator== ( (Uap & Up) + (Up_n*Uap_n)
+                + nueff*deltainv*(Uap_n - Uaneigh_n)  + (Up_n - Udp_n));
+   
     fixedValueFvPatchScalarField::updateCoeffs();
 }
 

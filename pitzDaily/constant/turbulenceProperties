@@ -17,7 +17,8 @@ FoamFile
 
 simulationType laminar;
 
-RAS
+//RAS
+Stokes
 {
     RASModel        kEpsilon;
 

@@ -89,13 +89,9 @@ void Foam::adjointOutletVelocityFvPatchVectorField::updateCoeffs()
         return;
     }
 
-    const fvsPatchField<scalar>& Uap =
-        patch().lookupPatchField<surfaceScalarField, scalar>("Ua");
- const fvsPatchField<scalar>& phip =
-        patch().lookupPatchField<surfaceScalarField, scalar>("phi");
- const fvsPatchField<scalar>& phiap =
-        patch().lookupPatchField<surfaceScalarField, scalar>("phia");
-
+    const fvPatchField<vector>& Uap =
+        patch().lookupPatchField<volVectorField, vector>("Ua");
+ 
     const fvPatchField<vector>& Up =
         patch().lookupPatchField<volVectorField, vector>("U");
 
@@ -103,27 +99,32 @@ void Foam::adjointOutletVelocityFvPatchVectorField::updateCoeffs()
    // vectorField UtHat((Up - patch().nf()*Un)/(Un + SMALL));
 
    // vectorField Uan(patch().nf()*(patch().nf() & patchInternalField()));
-
-    const incompressible::turbulenceModel & turb = db().lookupObject<incompressible::turbulenceModel>("turbulenceProperties");
+const incompressible::RASModel & rasModel =
+        db().lookupObject<incompressible::RASModel>("turbulenceProperties");
     
-    scalarField nueff = turb.nuEff()().boundaryField()[patch().index()];
+   // const incompressible::turbulenceModel & turb = db().lookupObject<incompressible::turbulenceModel>("turbulenceProperties");
+    
+    scalarField nueff = rasModel.nuEff()().boundaryField()[patch().index()];
     const scalarField & deltainv = patch().deltaCoeffs();
+  const fvPatchField<vector> & Udp =
+        patch().lookupPatchField<volVectorField,vector>("Ud");
+
+    vectorField Udp_n = (Udp & patch().nf())*patch().nf();
+    vectorField Udp_t = Udp - Udp_n;
+
     vectorField Up_n = (Up & patch().nf())*patch().nf();
+    scalarField Up_ns = (Up & patch().nf());
 
-    scalarField Up_ns = phip/patch().magSf();
-  
-    vectorField Up_t = Up - (phip * patch().Sf())/(patch().magSf()*patch().magSf());
- 
+    vectorField Up_t = Up - Up_n;
+
     vectorField Uaneigh = Uap.patchInternalField();
-
     vectorField Uaneigh_n = (Uaneigh & patch().nf())*patch().nf();
-
     vectorField Uaneigh_t = Uaneigh - Uaneigh_n;
 
-    vectorField Uap_t = (nueff*deltainv*Uaneigh_t + Up_ns*Up_t   )/(Up_ns + nueff*deltainv);
+    vectorField Uap_n = (Uap & patch().nf())*patch().nf();
+    vectorField Uap_t = ( -(Up_t - Udp_t) + nueff*deltainv*Uaneigh_t)/(Up_ns + nueff*deltainv);
 
-    vectorField Uap_n = (phiap * patch().Sf())/(patch().magSf()*patch().magSf());
-
+    
     vectorField::operator= (Uap_t + Uap_n);
 // vectorField::operator=(phiap*patch().Sf()/sqr(patch().magSf()) + UtHat);
     //vectorField::operator=(Uan + UtHat);

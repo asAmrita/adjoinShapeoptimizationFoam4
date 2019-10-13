@@ -20,6 +20,6 @@ transportModel  Newtonian;
 nu              1e-5;
 
 lambda          1e5;
-alphaMax        100.0;
+alphaMax        1.0;
 
 // ************************************************************************* //
